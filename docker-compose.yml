@@ -1,6 +1,4 @@
 
-version: '3.8'
-
 services:
   # MySQL Database
   mysql:
@@ -102,14 +100,15 @@ services:
 
   # Nginx Reverse Proxy
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
     container_name: arbeit-nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
     networks:
       - arbeit-network

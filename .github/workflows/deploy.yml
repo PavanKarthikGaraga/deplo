@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu   # or ubuntu if Ubuntu server
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,Dockerfile.backend,Dockerfile.frontend,nginx.conf,nginx/,README.md"
+          source: "docker-compose.yml,Dockerfile.backend,Dockerfile.frontend,Dockerfile.nginx,nginx.conf,nginx/"
           target: /home/ubuntu/arbeit-deployment
 
 
@@ -79,6 +79,10 @@ jobs:
 
             echo "Docker version: $(docker --version)"
             echo "Docker Compose version: $(docker compose version)"
+
+            # Test Docker functionality
+            echo "Testing Docker..."
+            sudo docker run --rm hello-world || echo "Docker hello-world test failed"
 
             # Verify files are present and stop old containers
             ls -la
