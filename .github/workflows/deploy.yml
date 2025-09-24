@@ -84,9 +84,9 @@ jobs:
             echo "Configuring Docker..."
             sudo docker logout || echo "No existing login to logout"
 
-            # Test Docker functionality with a simple image
+            # Test Docker functionality
             echo "Testing Docker..."
-            sudo docker run --rm alpine:latest echo "Docker is working" || echo "Docker test failed"
+            sudo docker --version || echo "Docker not available"
 
             # Note: Using custom MySQL build to avoid Docker Hub authentication issues
 

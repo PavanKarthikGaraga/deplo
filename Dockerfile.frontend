@@ -1,8 +1,24 @@
 # Multi-stage build for Next.js application
-# Stage 1: Dependencies
-FROM node:18-alpine AS deps
 
-RUN apk add --no-cache libc6-compat git
+# Base Node.js stage
+FROM alpine:latest AS nodejs-base
+
+# Install Node.js 18 and npm
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    libc6-compat \
+    git \
+    && npm install -g npm@latest
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Stage 1: Dependencies
+FROM nodejs-base AS deps
+
+USER nextjs
 WORKDIR /app
 
 # Clone the repository
@@ -18,7 +34,7 @@ COPY my-app/package*.json ./
 RUN npm ci --frozen-lockfile
 
 # Stage 2: Build the application
-FROM node:18-alpine AS builder
+FROM nodejs-base AS builder
 WORKDIR /app
 
 # Copy cloned repository
@@ -41,7 +57,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
 # Stage 3: Production image
-FROM node:18-alpine AS runner
+FROM nodejs-base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
