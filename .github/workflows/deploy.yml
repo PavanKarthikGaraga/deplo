@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu   # or ubuntu if Ubuntu server
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "docker-compose.yml,Dockerfile.frontend-fixed,Dockerfile.backend-fixed"
           target: /home/ubuntu/arbeit-deployment
 
 
@@ -86,51 +86,50 @@ jobs:
             # Create Docker config directory if it doesn't exist
             sudo mkdir -p /root/.docker
 
-            script: |
-              # Simple Docker deployment with authentication fix
-              echo "Starting deployment..."
+            # Simple Docker deployment with authentication fix
+            echo "Starting deployment..."
 
-              # Clone the application repository if it doesn't exist
-              if [ ! -d "../Arbeit-cicd" ]; then
-                echo "Cloning Arbeit-cicd repository..."
-                cd ..
-                git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
-                cd arbeit-deployment
-              else
-                echo "Updating Arbeit-cicd repository..."
-                cd ../Arbeit-cicd
-                git pull
-                cd ../arbeit-deployment
-              fi
+            # Clone the application repository if it doesn't exist
+            if [ ! -d "../Arbeit-cicd" ]; then
+              echo "Cloning Arbeit-cicd repository..."
+              cd ..
+              git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
+              cd arbeit-deployment
+            else
+              echo "Updating Arbeit-cicd repository..."
+              cd ../Arbeit-cicd
+              git pull
+              cd ../arbeit-deployment
+            fi
 
-              # Replace the problematic Dockerfiles with Docker Hub-free versions
-              echo "Replacing Dockerfiles to avoid Docker Hub issues..."
+            # Replace the problematic Dockerfiles with Docker Hub-free versions
+            echo "Replacing Dockerfiles to avoid Docker Hub issues..."
 
-              # Fix frontend Dockerfile
-              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile.fixed
-              mv ../Arbeit-cicd/my-app/Dockerfile ../Arbeit-cicd/my-app/Dockerfile.original
-              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
+            # Fix frontend Dockerfile
+            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile.fixed
+            mv ../Arbeit-cicd/my-app/Dockerfile ../Arbeit-cicd/my-app/Dockerfile.original
+            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
 
-              # Fix backend Dockerfile
-              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile.fixed
-              mv ../Arbeit-cicd/springboot-backend/Dockerfile ../Arbeit-cicd/springboot-backend/Dockerfile.original
-              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
+            # Fix backend Dockerfile
+            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile.fixed
+            mv ../Arbeit-cicd/springboot-backend/Dockerfile ../Arbeit-cicd/springboot-backend/Dockerfile.original
+            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
 
-              # Fix Docker Hub authentication issue
-              sudo docker logout || true
+            # Fix Docker Hub authentication issue
+            sudo docker logout || true
 
-              # Verify docker-compose.yml exists
-              if [ ! -f "docker-compose.yml" ]; then
-                echo "ERROR: docker-compose.yml not found!"
-                exit 1
-              fi
+            # Verify docker-compose.yml exists
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "ERROR: docker-compose.yml not found!"
+              exit 1
+            fi
 
-              # Stop existing containers
-              sudo docker compose down || echo "No existing containers to stop"
+            # Stop existing containers
+            sudo docker compose down || echo "No existing containers to stop"
 
-              # Clean up and deploy
-              sudo docker system prune -f || true
-              sudo docker compose up -d --build
+            # Clean up and deploy
+            sudo docker system prune -f || true
+            sudo docker compose up -d --build
 
-              echo "Deployment completed!"
-              sudo docker compose ps
+            echo "Deployment completed!"
+            sudo docker compose ps
