@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu   # or ubuntu if Ubuntu server
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "./*"
+          source: "docker-compose.yml,Dockerfile.backend,Dockerfile.frontend,nginx.conf,nginx/,README.md"
           target: /home/ubuntu/arbeit-deployment
 
 
@@ -50,7 +50,7 @@ jobs:
             sudo apt-get install -y git
             fi
 
-            # Install Docker if missing
+            # Install Docker and Docker Compose if missing
             if ! command -v docker &> /dev/null; then
             echo "Installing Docker..."
             sudo apt-get update -y
@@ -70,8 +70,31 @@ jobs:
             sudo systemctl start docker
             fi
 
-            # Stop old containers, rebuild, and restart (with sudo)
-            sudo docker compose down
+            # Verify Docker Compose is available
+            if ! docker compose version &> /dev/null; then
+              echo "Installing Docker Compose plugin..."
+              sudo apt-get update -y
+              sudo apt-get install -y docker-compose-plugin
+            fi
+
+            echo "Docker version: $(docker --version)"
+            echo "Docker Compose version: $(docker compose version)"
+
+            # Verify files are present and stop old containers
+            ls -la
+            echo "Checking for docker-compose.yml..."
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "ERROR: docker-compose.yml not found!"
+              exit 1
+            fi
+
+            # Stop old containers if they exist
+            sudo docker compose down || echo "No existing containers to stop"
+
+            # Clean up any dangling resources
+            sudo docker system prune -f
+
+            # Build and start containers
             sudo docker compose up -d --build
 
 
