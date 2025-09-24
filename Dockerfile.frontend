@@ -1,6 +1,6 @@
 # Multi-stage build for Next.js application
 
-# Base Node.js stage
+# Base Node.js stage - try multiple registry approaches
 FROM alpine:latest AS nodejs-base
 
 # Install Node.js 18 and npm

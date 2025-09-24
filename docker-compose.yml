@@ -1,10 +1,11 @@
+version: '3.8'
 
 services:
   # Spring Boot Backend
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ../Arbeit-cicd/springboot-backend
+      dockerfile: Dockerfile
     container_name: arbeit-backend
     restart: unless-stopped
     ports:
@@ -12,10 +13,10 @@ services:
     environment:
       # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/arbeit?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: adminadmin
+      SPRING_DATASOURCE_USERNAME: arbeit_user
+      SPRING_DATASOURCE_PASSWORD: asdfghjk
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-
+      
       # JPA Configuration
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
@@ -51,8 +52,8 @@ services:
   # Next.js Frontend
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ../Arbeit-cicd/my-app
+      dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://13.221.25.150:9090/api
     container_name: arbeit-frontend
@@ -76,16 +77,15 @@ services:
 
   # Nginx Reverse Proxy
   nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
+    image: nginx:alpine
     container_name: arbeit-nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/ssl:/etc/nginx/ssl
+      - ../Arbeit-cicd/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../Arbeit-cicd/nginx/ssl:/etc/nginx/ssl
     networks:
       - arbeit-network
     depends_on:

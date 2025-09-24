@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu   # or ubuntu if Ubuntu server
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,Dockerfile.backend,Dockerfile.frontend,Dockerfile.nginx,nginx.conf,nginx/"
+          source: "docker-compose.yml"
           target: /home/ubuntu/arbeit-deployment
 
 
@@ -35,7 +35,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu    # ✅ Amazon Linux user
+          username: ubuntu    # ✅Ubuntu user
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           debug: true
@@ -82,30 +82,38 @@ jobs:
 
             # Configure Docker for public registry access
             echo "Configuring Docker..."
-            sudo docker logout || echo "No existing login to logout"
 
-            # Test Docker functionality
-            echo "Testing Docker..."
-            sudo docker --version || echo "Docker not available"
+            # Create Docker config directory if it doesn't exist
+            sudo mkdir -p /root/.docker
 
-            # Note: Using custom MySQL build to avoid Docker Hub authentication issues
+            script: |
+              # Simple Docker deployment with authentication fix
+              echo "Starting deployment..."
 
-            # Verify files are present and stop old containers
-            ls -la
-            echo "Checking for docker-compose.yml..."
-            if [ ! -f "docker-compose.yml" ]; then
-              echo "ERROR: docker-compose.yml not found!"
-              exit 1
-            fi
+              # Fix Docker Hub authentication issue
+              sudo docker logout || true
 
-            # Stop old containers if they exist
-            sudo docker compose down || echo "No existing containers to stop"
+              # Check if images are already available locally
+              if ! sudo docker images | grep -q nginx; then
+                echo "Pulling nginx image..."
+                sudo docker pull nginx:alpine || echo "nginx pull failed, continuing..."
+              fi
 
-            # Clean up any dangling resources
-            sudo docker system prune -f
+              # Verify docker-compose.yml exists
+              if [ ! -f "docker-compose.yml" ]; then
+                echo "ERROR: docker-compose.yml not found!"
+                exit 1
+              fi
 
-            # Build and start containers
-            sudo docker compose up -d --build
+              # Stop existing containers
+              sudo docker compose down || echo "No existing containers to stop"
+
+              # Clean up and deploy
+              sudo docker system prune -f || true
+              sudo docker compose up -d --build
+
+              echo "Deployment completed!"
+              sudo docker compose ps
 
 
 
