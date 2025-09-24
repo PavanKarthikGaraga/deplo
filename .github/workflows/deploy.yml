@@ -93,12 +93,6 @@ jobs:
               # Fix Docker Hub authentication issue
               sudo docker logout || true
 
-              # Check if images are already available locally
-              if ! sudo docker images | grep -q nginx; then
-                echo "Pulling nginx image..."
-                sudo docker pull nginx:alpine || echo "nginx pull failed, continuing..."
-              fi
-
               # Verify docker-compose.yml exists
               if [ ! -f "docker-compose.yml" ]; then
                 echo "ERROR: docker-compose.yml not found!"
@@ -114,8 +108,3 @@ jobs:
 
               echo "Deployment completed!"
               sudo docker compose ps
-
-
-
-
-
