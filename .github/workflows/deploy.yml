@@ -88,34 +88,72 @@ jobs:
 
             # Simple Docker deployment with authentication fix
             echo "Starting deployment..."
+            set -e  # Exit on any error
+
+            # Show current directory
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
 
             # Clone the application repository if it doesn't exist
             if [ ! -d "../Arbeit-cicd" ]; then
               echo "Cloning Arbeit-cicd repository..."
               cd ..
-              git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
+              pwd
+              ls -la
+              git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git || {
+                echo "ERROR: Failed to clone Arbeit-cicd repository"
+                exit 1
+              }
               cd arbeit-deployment
+              pwd
             else
               echo "Updating Arbeit-cicd repository..."
               cd ../Arbeit-cicd
-              git pull
+              pwd
+              git pull || echo "Warning: Failed to update repository, continuing..."
               cd ../arbeit-deployment
+              pwd
+            fi
+
+            # Check if Arbeit-cicd directories exist
+            if [ ! -d "../Arbeit-cicd/my-app" ]; then
+              echo "ERROR: my-app directory not found in Arbeit-cicd"
+              exit 1
+            fi
+
+            if [ ! -d "../Arbeit-cicd/springboot-backend" ]; then
+              echo "ERROR: springboot-backend directory not found in Arbeit-cicd"
+              exit 1
             fi
 
             # Replace the problematic Dockerfiles with Docker Hub-free versions
             echo "Replacing Dockerfiles to avoid Docker Hub issues..."
 
             # Fix frontend Dockerfile
-            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile.fixed
-            mv ../Arbeit-cicd/my-app/Dockerfile ../Arbeit-cicd/my-app/Dockerfile.original
-            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
+            echo "Fixing frontend Dockerfile..."
+            if [ -f "../Arbeit-cicd/my-app/Dockerfile" ]; then
+              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile.fixed || echo "Warning: Failed to backup frontend Dockerfile"
+              mv ../Arbeit-cicd/my-app/Dockerfile ../Arbeit-cicd/my-app/Dockerfile.original || echo "Warning: Failed to move original frontend Dockerfile"
+            fi
+            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile || {
+              echo "ERROR: Failed to copy frontend Dockerfile"
+              exit 1
+            }
 
             # Fix backend Dockerfile
-            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile.fixed
-            mv ../Arbeit-cicd/springboot-backend/Dockerfile ../Arbeit-cicd/springboot-backend/Dockerfile.original
-            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
+            echo "Fixing backend Dockerfile..."
+            if [ -f "../Arbeit-cicd/springboot-backend/Dockerfile" ]; then
+              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile.fixed || echo "Warning: Failed to backup backend Dockerfile"
+              mv ../Arbeit-cicd/springboot-backend/Dockerfile ../Arbeit-cicd/springboot-backend/Dockerfile.original || echo "Warning: Failed to move original backend Dockerfile"
+            fi
+            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile || {
+              echo "ERROR: Failed to copy backend Dockerfile"
+              exit 1
+            }
 
             # Fix Docker Hub authentication issue
+            echo "Configuring Docker authentication..."
             sudo docker logout || true
 
             # Verify docker-compose.yml exists
@@ -125,11 +163,25 @@ jobs:
             fi
 
             # Stop existing containers
+            echo "Stopping existing containers..."
             sudo docker compose down || echo "No existing containers to stop"
 
             # Clean up and deploy
-            sudo docker system prune -f || true
-            sudo docker compose up -d --build
+            echo "Cleaning up Docker system..."
+            sudo docker system prune -f || echo "Warning: Failed to prune Docker system"
 
-            echo "Deployment completed!"
+            echo "Building and starting containers..."
+            sudo docker compose up -d --build || {
+              echo "ERROR: Failed to build/start containers"
+              echo "Checking Docker status..."
+              sudo docker compose ps
+              sudo docker compose logs
+              exit 1
+            }
+
+            echo "Deployment completed successfully!"
+            echo "Container status:"
             sudo docker compose ps
+            echo ""
+            echo "Container logs (last 20 lines):"
+            sudo docker compose logs --tail=20
