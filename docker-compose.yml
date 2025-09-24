@@ -80,11 +80,3 @@ networks:
 volumes:
   uploads_data:
     driver: local
-
-networks:
-  arbeit-network:
-    driver: bridge
-
-volumes:
-  uploads_data:
-    driver: local
