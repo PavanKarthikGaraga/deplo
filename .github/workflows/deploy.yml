@@ -93,27 +93,54 @@ jobs:
             # Show current directory
             echo "Current directory: $(pwd)"
             echo "Directory contents:"
-            ls -la
+            ls -la || {
+              echo "ERROR: Failed to list directory contents"
+              exit 1
+            }
 
             # Clone the application repository if it doesn't exist
+            echo "Checking for Arbeit-cicd repository..."
+            echo "Parent directory check: $(ls -la .. | grep -E "(Arbeit|arbeit)" || echo "No Arbeit directories found")"
+
             if [ ! -d "../Arbeit-cicd" ]; then
+              echo "Arbeit-cicd directory not found, will clone it"
               echo "Cloning Arbeit-cicd repository..."
-              cd ..
-              pwd
-              ls -la
-              git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git || {
-                echo "ERROR: Failed to clone Arbeit-cicd repository"
+              echo "Moving to parent directory..."
+              cd .. || {
+                echo "ERROR: Failed to cd to parent directory"
                 exit 1
               }
-              cd arbeit-deployment
-              pwd
+              echo "Now in: $(pwd)"
+              echo "Contents: $(ls -la)"
+
+              echo "Starting git clone..."
+              git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git 2>&1 || {
+                echo "ERROR: Failed to clone Arbeit-cicd repository"
+                echo "Git version: $(git --version)"
+                echo "Current directory: $(pwd)"
+                exit 1
+              }
+              echo "Git clone completed successfully"
+
+              echo "Moving back to arbeit-deployment..."
+              cd arbeit-deployment || {
+                echo "ERROR: Failed to cd back to arbeit-deployment"
+                exit 1
+              }
+              echo "Now in: $(pwd)"
             else
-              echo "Updating Arbeit-cicd repository..."
-              cd ../Arbeit-cicd
-              pwd
-              git pull || echo "Warning: Failed to update repository, continuing..."
-              cd ../arbeit-deployment
-              pwd
+              echo "Arbeit-cicd directory exists, updating..."
+              cd ../Arbeit-cicd || {
+                echo "ERROR: Failed to cd to Arbeit-cicd"
+                exit 1
+              }
+              echo "In Arbeit-cicd directory: $(pwd)"
+              git pull 2>&1 || echo "Warning: Failed to update repository, continuing..."
+              cd ../arbeit-deployment || {
+                echo "ERROR: Failed to cd back to arbeit-deployment"
+                exit 1
+              }
+              echo "Back in arbeit-deployment: $(pwd)"
             fi
 
             # Check if Arbeit-cicd directories exist
