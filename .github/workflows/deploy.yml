@@ -90,6 +90,19 @@ jobs:
               # Simple Docker deployment with authentication fix
               echo "Starting deployment..."
 
+              # Clone the application repository if it doesn't exist
+              if [ ! -d "../Arbeit-cicd" ]; then
+                echo "Cloning Arbeit-cicd repository..."
+                cd ..
+                git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
+                cd arbeit-deployment
+              else
+                echo "Updating Arbeit-cicd repository..."
+                cd ../Arbeit-cicd
+                git pull
+                cd ../arbeit-deployment
+              fi
+
               # Fix Docker Hub authentication issue
               sudo docker logout || true
 
