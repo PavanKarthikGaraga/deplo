@@ -103,6 +103,19 @@ jobs:
                 cd ../arbeit-deployment
               fi
 
+              # Replace the problematic Dockerfiles with Docker Hub-free versions
+              echo "Replacing Dockerfiles to avoid Docker Hub issues..."
+
+              # Fix frontend Dockerfile
+              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile.fixed
+              mv ../Arbeit-cicd/my-app/Dockerfile ../Arbeit-cicd/my-app/Dockerfile.original
+              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
+
+              # Fix backend Dockerfile
+              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile.fixed
+              mv ../Arbeit-cicd/springboot-backend/Dockerfile ../Arbeit-cicd/springboot-backend/Dockerfile.original
+              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
+
               # Fix Docker Hub authentication issue
               sudo docker logout || true
 

@@ -1,0 +1,79 @@
+# Multi-stage build for Spring Boot application (Docker Hub-free version)
+
+# Base Java stage - build from Ubuntu packages
+FROM ubuntu:22.04 AS java-base
+
+# Install Java 17 and Maven directly from Ubuntu
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    openjdk-17-jdk \
+    maven \
+    git \
+    curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installations
+RUN java -version && mvn -version
+
+# Create non-root user
+RUN groupadd -g 1001 spring && useradd -u 1001 -g spring spring
+
+# Stage 1: Build the application
+FROM java-base AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy pom.xml first for better caching
+COPY pom.xml .
+
+# Download dependencies
+RUN mvn dependency:go-offline -B
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Stage 2: Production image
+FROM ubuntu:22.04 AS production
+
+# Install Java 17 JRE for runtime
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    openjdk-17-jre \
+    curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -g 1001 spring && useradd -u 1001 -g spring spring
+
+# Copy the WAR file from builder stage
+COPY --from=builder /app/target/*.war app.war
+
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads && chown -R spring:spring /app
+
+# Switch to non-root user
+USER spring
+
+# Expose port
+EXPOSE 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:9090/actuator/health || exit 1
+
+# Environment variables
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV SPRING_PROFILES_ACTIVE=docker
+ENV SERVER_PORT=9090
+
+# Start the application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.war"]

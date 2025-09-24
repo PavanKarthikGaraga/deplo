@@ -1,0 +1,67 @@
+# Multi-stage build for Next.js application (Docker Hub-free version)
+
+# Base Node.js stage - build from Alpine packages
+FROM alpine:latest AS nodejs-base
+
+# Install Node.js 18 and npm directly from Alpine
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    libc6-compat \
+    git \
+    && npm install -g npm@latest
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Stage 1: Dependencies
+FROM nodejs-base AS deps
+
+USER nextjs
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --frozen-lockfile
+
+# Stage 2: Build the application
+FROM nodejs-base AS builder
+
+USER nextjs
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY . .
+
+# Set environment variables for build time
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+# Build the application
+RUN npm run build
+
+# Stage 3: Production image
+FROM nodejs-base AS runner
+
+USER nextjs
+WORKDIR /app
+
+ENV NODE_ENV production
+
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Expose port
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+# Start the application
+CMD ["node", "server.js"]
