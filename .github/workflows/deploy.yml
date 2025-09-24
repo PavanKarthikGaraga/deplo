@@ -80,9 +80,15 @@ jobs:
             echo "Docker version: $(docker --version)"
             echo "Docker Compose version: $(docker compose version)"
 
-            # Test Docker functionality
+            # Configure Docker for public registry access
+            echo "Configuring Docker..."
+            sudo docker logout || echo "No existing login to logout"
+
+            # Test Docker functionality with a simple image
             echo "Testing Docker..."
-            sudo docker run --rm hello-world || echo "Docker hello-world test failed"
+            sudo docker run --rm alpine:latest echo "Docker is working" || echo "Docker test failed"
+
+            # Note: Using custom MySQL build to avoid Docker Hub authentication issues
 
             # Verify files are present and stop old containers
             ls -la
