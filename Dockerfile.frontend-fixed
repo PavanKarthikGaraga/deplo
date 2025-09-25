@@ -1,7 +1,7 @@
 # Multi-stage build for Next.js application (Docker Hub-free version)
 
 # Base Node.js stage - build from Alpine packages
-FROM alpine:latest AS nodejs-base
+FROM mcr.microsoft.com/mirror/docker/library/alpine:3.19 AS nodejs-base
 
 # Install Node.js 18 and npm directly from Alpine
 RUN apk add --no-cache \
