@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:   # allow manual run from GitHub UI
+  workflow_dispatch: # allow manual run from GitHub UI
 
 jobs:
   deploy:
@@ -19,58 +19,58 @@ jobs:
       - name: List repo files
         run: ls -R
 
-      # Step 3: Copy files to EC2 inside ~/arbeit-deployment
+      # Step 3: Copy fixed Dockerfiles + compose file to EC2
       - name: Copy repo to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu   # or ubuntu if Ubuntu server
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "docker-compose.yml,Dockerfile.frontend-fixed,Dockerfile.backend-fixed"
           target: /home/ubuntu/arbeit-deployment
-
 
       # Step 4: SSH into EC2 and deploy with Docker Compose
       - name: Deploy on EC2 with Docker Compose
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu    # ✅Ubuntu user
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           debug: true
           script: |
+            set -e
 
             cd ~/arbeit-deployment
 
             # Install Git if missing
             if ! command -v git &> /dev/null; then
-            echo "Installing Git..."
-            sudo apt-get update -y
-            sudo apt-get install -y git
+              echo "Installing Git..."
+              sudo apt-get update -y
+              sudo apt-get install -y git
             fi
 
-            # Install Docker and Docker Compose if missing
+            # Install Docker if missing
             if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-            sudo apt-get update -y
-            sudo apt-get install -y ca-certificates curl gnupg lsb-release
+              echo "Installing Docker..."
+              sudo apt-get update -y
+              sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
-            sudo mkdir -p /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              sudo mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-            echo \
+              echo \
                 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
                 $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-            sudo apt-get update -y
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              sudo apt-get update -y
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-            sudo systemctl enable docker
-            sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo systemctl start docker
             fi
 
-            # Verify Docker Compose is available
+            # Verify Docker Compose plugin
             if ! docker compose version &> /dev/null; then
               echo "Installing Docker Compose plugin..."
               sudo apt-get update -y
@@ -80,44 +80,39 @@ jobs:
             echo "Docker version: $(docker --version)"
             echo "Docker Compose version: $(docker compose version)"
 
-            # Configure Docker for public registry access
-            echo "Configuring Docker..."
-
-            # Create Docker config directory if it doesn't exist
-            sudo mkdir -p /root/.docker
-
             echo "🚀 Starting clean deployment..."
 
-              # Clone/update repository
-              if [ ! -d "../Arbeit-cicd" ]; then
-                echo "📥 Cloning Arbeit-cicd repository..."
-                cd .. && git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
-              else
-                echo "🔄 Updating Arbeit-cicd repository..."
-                (cd ../Arbeit-cicd && git pull)
-              fi
+            # Clone or update repository
+            if [ ! -d "../Arbeit-cicd" ]; then
+              echo "📥 Cloning Arbeit-cicd repository..."
+              cd .. && git clone https://github.com/PavanKarthikGaraga/Arbeit-cicd.git
+            else
+              echo "🔄 Updating Arbeit-cicd repository..."
+              (cd ../Arbeit-cicd && git pull)
+            fi
 
-              # Replace Dockerfiles to avoid Docker Hub auth issues
-              echo "🔧 Replacing Dockerfiles..."
-              cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
-              cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
+            # Replace Dockerfiles to avoid Docker Hub auth issues
+            echo "🔧 Replacing Dockerfiles..."
+            cp Dockerfile.frontend-fixed ../Arbeit-cicd/my-app/Dockerfile
+            cp Dockerfile.backend-fixed ../Arbeit-cicd/springboot-backend/Dockerfile
 
-              # Simple deployment
-              echo "🐳 Deploying with Docker Compose..."
-              sudo docker logout 2>/dev/null || true
-              sudo docker compose down 2>/dev/null || true
-              sudo docker compose up -d --build
+            # Deploy with Docker Compose
+            cd ../Arbeit-cicd
+            echo "🐳 Deploying with Docker Compose..."
+            sudo docker logout 2>/dev/null || true
+            sudo docker compose down 2>/dev/null || true
+            sudo docker compose up -d --build
 
-              # Check status
-              echo "📊 Deployment status:"
-              sudo docker compose ps
+            # Check status
+            echo "📊 Deployment status:"
+            sudo docker compose ps
 
-              if sudo docker compose ps | grep -q "Up"; then
-                echo "✅ Deployment successful!"
-                echo "🌐 Frontend: http://your-server:3000"
-                echo "🔧 Backend: http://your-server:9090"
-              else
-                echo "❌ Deployment failed"
-                sudo docker compose logs
-                exit 1
-              fi
+            if sudo docker compose ps | grep -q "Up"; then
+              echo "✅ Deployment successful!"
+              echo "🌐 Frontend: http://${{ secrets.EC2_HOST }}:3000"
+              echo "🔧 Backend: http://${{ secrets.EC2_HOST }}:9090"
+            else
+              echo "❌ Deployment failed"
+              sudo docker compose logs
+              exit 1
+            fi
