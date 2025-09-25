@@ -86,8 +86,7 @@ jobs:
             # Create Docker config directory if it doesn't exist
             sudo mkdir -p /root/.docker
 
-            script: |
-              echo "🚀 Starting clean deployment..."
+            echo "🚀 Starting clean deployment..."
 
               # Clone/update repository
               if [ ! -d "../Arbeit-cicd" ]; then
